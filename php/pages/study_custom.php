@@ -63,7 +63,7 @@ include __DIR__ . '/../templates/header.php';
 <div class="table-responsive">
     <table class="table table-hover align-middle">
         <thead class="table-light">
-            <tr><th>チャプター</th><th style="width:80px">問題</th><th style="width:220px">回答</th><th>累計正答率</th><th>累計回数</th><th>最終学習日</th></tr>
+            <tr><th>チャプター</th><th style="width:130px; white-space: nowrap;">問題</th><th style="width:220px">回答</th><th>累計正答率</th><th>累計回数</th><th>最終学習日</th></tr>
         </thead>
         <tbody>
             <?php foreach ($custom_problems as $idx => $p):
@@ -73,7 +73,7 @@ include __DIR__ . '/../templates/header.php';
             ?>
             <tr id="row-<?= $idx ?>" class="<?= $row_class ?>">
                 <td class="text-muted small"><?= h($p['chapter_name']) ?></td>
-                <td><strong><?= $p['problem_number'] ?></strong></td>
+                <td style="white-space: nowrap;"><strong><?= $p['problem_number'] ?></strong></td>
                 <td>
                     <div class="btn-group btn-group-sm" role="group">
                         <button class="btn btn-outline-success record-btn <?= $ps['session_result'] === 'correct' ? 'active' : '' ?>"

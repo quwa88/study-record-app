@@ -83,7 +83,7 @@ include __DIR__ . '/../templates/header.php';
     <table class="table table-hover align-middle">
         <thead class="table-light">
             <tr>
-                <th style="width: 80px;">問題</th>
+                <th style="width: 130px; white-space: nowrap;">問題</th>
                 <th style="width: 220px;">回答</th>
                 <th>累計正答率</th>
                 <th>累計回数</th>
@@ -96,7 +96,7 @@ include __DIR__ . '/../templates/header.php';
                 $row_class = $ps['session_result'] === 'correct' ? 'table-success' : ($ps['session_result'] === 'incorrect' ? 'table-danger' : '');
             ?>
             <tr id="row-<?= $pn ?>" class="<?= $row_class ?>">
-                <td><strong><?= $pn ?></strong></td>
+                <td style="white-space: nowrap;"><strong><?= $pn ?></strong></td>
                 <td>
                     <div class="btn-group btn-group-sm" role="group">
                         <button class="btn btn-outline-success record-btn <?= $ps['session_result'] === 'correct' ? 'active' : '' ?>"
