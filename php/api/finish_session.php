@@ -4,7 +4,12 @@ $stmt = $db->prepare("SELECT * FROM sessions WHERE id = ? AND finished_at IS NUL
 $stmt->execute([$session_id]);
 $session = $stmt->fetch();
 
+$is_fetch = (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)
+          || (isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false)
+          || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest');
+
 if (!$session) {
+    if ($is_fetch) { json_response(['error' => 'セッションが見つかりません'], 400); }
     flash('セッションが見つかりません。', 'error');
     redirect($subject);
 }
@@ -20,6 +25,11 @@ $summary = $stmt->fetch();
 
 $total = intval($summary['total']);
 $correct = intval($summary['correct']);
+
+if ($is_fetch) {
+    json_response(['success' => true, 'total' => $total, 'correct' => $correct]);
+}
+
 if ($total > 0) {
     $acc = round(100.0 * $correct / $total, 1);
     flash("学習終了！ 回答数: {$total}問 / 正解: {$correct}問 / 正答率: {$acc}%", 'success');

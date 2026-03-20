@@ -71,8 +71,8 @@ include __DIR__ . '/../templates/header.php';
             <i class="bi bi-check2-square"></i> 回答済: <strong id="answered-count"><?= $answered ?></strong>/<?= $total_problems ?>
         </span>
     </div>
-    <form method="POST" action="<?= url("$subject/finish_session/$session_id") ?>"
-          onsubmit="return confirm('学習を終了しますか？記録が保存されます。')">
+    <form id="finish-form" method="POST" action="<?= url("$subject/finish_session/$session_id") ?>"
+          onsubmit="window._finishing = true; return confirm('学習を終了しますか？記録が保存されます。');">
         <button type="submit" class="btn btn-success">
             <i class="bi bi-check-circle"></i> 学習終了
         </button>
@@ -101,11 +101,11 @@ include __DIR__ . '/../templates/header.php';
                     <div class="btn-group btn-group-sm" role="group">
                         <button class="btn btn-outline-success record-btn <?= $ps['session_result'] === 'correct' ? 'active' : '' ?>"
                                 data-problem="<?= $pn ?>" data-result="correct">
-                            <i class="bi bi-circle"></i> 正解
+                            <i class="bi bi-circle"></i>
                         </button>
                         <button class="btn btn-outline-danger record-btn <?= $ps['session_result'] === 'incorrect' ? 'active' : '' ?>"
                                 data-problem="<?= $pn ?>" data-result="incorrect">
-                            <i class="bi bi-x-lg"></i> 不正解
+                            <i class="bi bi-x-lg"></i>
                         </button>
                         <button class="btn btn-outline-secondary undo-btn"
                                 data-problem="<?= $pn ?>" title="取消"
@@ -143,10 +143,33 @@ include __DIR__ . '/../templates/header.php';
 $cn_json = json_encode($chapter_name);
 $record_url = url('record');
 $undo_url = url('undo');
+$finish_url = url("$subject/finish_session/$session_id");
 $page_scripts = <<<SCRIPT
 <script>
 const SESSION_ID = {$session_id};
 const CHAPTER_NAME = {$cn_json};
+window._finishing = false;
+
+window.addEventListener('beforeunload', function(e) {
+    if (!window._finishing) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+document.querySelectorAll('a').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+        if (window._finishing) return;
+        e.preventDefault();
+        var href = this.href;
+        if (confirm('学習を終了して移動しますか？記録は保存されます。')) {
+            window._finishing = true;
+            fetch('{$finish_url}', { method: 'POST' }).finally(function() {
+                window.location.href = href;
+            });
+        }
+    });
+});
 
 function updateDisplay(pn, data) {
     const accEl = document.getElementById('accuracy-' + pn);

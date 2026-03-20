@@ -55,7 +55,7 @@ include __DIR__ . '/../templates/header.php';
         <i class="bi bi-calendar"></i> <?= h($session['study_date']) ?>
         <span class="ms-3"><i class="bi bi-check2-square"></i> 回答済: <strong id="answered-count"><?= $answered ?></strong>/<?= $total_problems ?></span>
     </div>
-    <form method="POST" action="<?= url("$subject/finish_session/$session_id") ?>" onsubmit="return confirm('学習を終了しますか？記録が保存されます。')">
+    <form id="finish-form" method="POST" action="<?= url("$subject/finish_session/$session_id") ?>" onsubmit="window._finishing = true; return confirm('学習を終了しますか？記録が保存されます。');">
         <button type="submit" class="btn btn-success"><i class="bi bi-check-circle"></i> 学習終了</button>
     </form>
 </div>
@@ -78,11 +78,11 @@ include __DIR__ . '/../templates/header.php';
                     <div class="btn-group btn-group-sm" role="group">
                         <button class="btn btn-outline-success record-btn <?= $ps['session_result'] === 'correct' ? 'active' : '' ?>"
                                 data-index="<?= $idx ?>" data-chapter="<?= h($p['chapter_name']) ?>" data-problem="<?= $p['problem_number'] ?>" data-result="correct">
-                            <i class="bi bi-circle"></i> 正解
+                            <i class="bi bi-circle"></i>
                         </button>
                         <button class="btn btn-outline-danger record-btn <?= $ps['session_result'] === 'incorrect' ? 'active' : '' ?>"
                                 data-index="<?= $idx ?>" data-chapter="<?= h($p['chapter_name']) ?>" data-problem="<?= $p['problem_number'] ?>" data-result="incorrect">
-                            <i class="bi bi-x-lg"></i> 不正解
+                            <i class="bi bi-x-lg"></i>
                         </button>
                         <button class="btn btn-outline-secondary undo-btn" data-index="<?= $idx ?>" data-chapter="<?= h($p['chapter_name']) ?>" data-problem="<?= $p['problem_number'] ?>" title="取消" <?= !$ps['session_result'] ? 'disabled' : '' ?>>
                             <i class="bi bi-arrow-counterclockwise"></i>
@@ -101,9 +101,32 @@ include __DIR__ . '/../templates/header.php';
 <?php
 $record_url = url('record');
 $undo_url = url('undo');
+$finish_url = url("$subject/finish_session/$session_id");
 $page_scripts = <<<SCRIPT
 <script>
 const SESSION_ID = {$session_id};
+window._finishing = false;
+
+window.addEventListener('beforeunload', function(e) {
+    if (!window._finishing) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+document.querySelectorAll('a').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+        if (window._finishing) return;
+        e.preventDefault();
+        var href = this.href;
+        if (confirm('学習を終了して移動しますか？記録は保存されます。')) {
+            window._finishing = true;
+            fetch('{$finish_url}', { method: 'POST' }).finally(function() {
+                window.location.href = href;
+            });
+        }
+    });
+});
 function updateDisplay(idx, data) {
     const accEl = document.getElementById('accuracy-' + idx);
     if (data.accuracy !== null && data.total > 0) {
