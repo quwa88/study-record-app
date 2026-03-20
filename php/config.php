@@ -65,7 +65,7 @@ function init_db(): void {
             id INT AUTO_INCREMENT PRIMARY KEY,
             session_id INT NOT NULL,
             chapter_name VARCHAR(255) NOT NULL,
-            problem_number INT NOT NULL,
+            problem_number VARCHAR(50) NOT NULL,
             result ENUM('correct', 'incorrect') NOT NULL,
             study_date DATE NOT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -77,10 +77,17 @@ function init_db(): void {
             id INT AUTO_INCREMENT PRIMARY KEY,
             session_id INT NOT NULL,
             chapter_name VARCHAR(255) NOT NULL,
-            problem_number INT NOT NULL,
+            problem_number VARCHAR(50) NOT NULL,
             FOREIGN KEY (session_id) REFERENCES sessions(id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+    // 既存テーブルのproblem_numberをVARCHARに変更
+    try {
+        $db->exec("ALTER TABLE records MODIFY COLUMN problem_number VARCHAR(50) NOT NULL");
+        $db->exec("ALTER TABLE custom_session_problems MODIFY COLUMN problem_number VARCHAR(50) NOT NULL");
+    } catch (\Exception $e) {
+        // 既に変更済みの場合は無視
+    }
 }
 
 /**

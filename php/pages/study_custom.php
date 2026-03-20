@@ -117,7 +117,7 @@ document.querySelectorAll('.record-btn').forEach(function(btn) {
         const row = document.getElementById('row-' + idx);
         row.querySelectorAll('button').forEach(b => b.disabled = true);
         try {
-            const res = await fetch('{$record_url}', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ session_id: SESSION_ID, chapter_name: ch, problem_number: parseInt(pn), result: result }) });
+            const res = await fetch('{$record_url}', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ session_id: SESSION_ID, chapter_name: ch, problem_number: pn, result: result }) });
             if (!res.ok) { alert('記録に失敗しました'); return; }
             const data = await res.json();
             if (data.success) { updateDisplay(idx, data); row.className = result === 'correct' ? 'table-success' : 'table-danger'; row.querySelectorAll('.record-btn').forEach(b => b.classList.remove('active')); clicked.classList.add('active'); }
@@ -131,7 +131,7 @@ document.querySelectorAll('.undo-btn').forEach(function(btn) {
         const row = document.getElementById('row-' + idx);
         row.querySelectorAll('button').forEach(b => b.disabled = true);
         try {
-            const res = await fetch('{$undo_url}', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ session_id: SESSION_ID, chapter_name: ch, problem_number: parseInt(pn) }) });
+            const res = await fetch('{$undo_url}', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ session_id: SESSION_ID, chapter_name: ch, problem_number: pn }) });
             if (!res.ok) { alert('取消に失敗しました'); return; }
             const data = await res.json();
             if (data.success) { updateDisplay(idx, data); row.className = ''; row.querySelectorAll('.record-btn').forEach(b => b.classList.remove('active')); undoBtn.disabled = true; }

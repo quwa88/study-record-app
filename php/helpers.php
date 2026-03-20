@@ -31,13 +31,13 @@ function load_problems_from_excel(string $subject): array {
     foreach ($rows as $row) {
         if ($first) { $first = false; continue; } // ヘッダースキップ
         $chapter = trim($row['A'] ?? '');
-        $number = intval($row['B'] ?? 0);
-        if ($chapter === '' || $number === 0) continue;
+        $number = trim(strval($row['B'] ?? ''));
+        if ($chapter === '' || $number === '') continue;
         $problems[$chapter][] = $number;
     }
 
     foreach ($problems as &$nums) {
-        sort($nums);
+        sort($nums, SORT_NATURAL);
     }
 
     return $problems;

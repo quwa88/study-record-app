@@ -2,7 +2,7 @@
 $data = json_decode(file_get_contents('php://input'), true);
 $session_id = intval($data['session_id'] ?? 0);
 $chapter_name = $data['chapter_name'] ?? '';
-$problem_number = intval($data['problem_number'] ?? 0);
+$problem_number = trim(strval($data['problem_number'] ?? ''));
 $result = $data['result'] ?? '';
 
 if (!in_array($result, ['correct', 'incorrect'])) {

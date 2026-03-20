@@ -15,7 +15,7 @@ $session_id = $db->lastInsertId();
 
 $ins = $db->prepare("INSERT INTO custom_session_problems (session_id, chapter_name, problem_number) VALUES (?, ?, ?)");
 foreach ($problems as $p) {
-    $ins->execute([$session_id, $p['chapter_name'], intval($p['problem_number'])]);
+    $ins->execute([$session_id, $p['chapter_name'], trim(strval($p['problem_number']))]);
 }
 
 json_response(['redirect' => url("$subject/study_custom/$session_id")]);

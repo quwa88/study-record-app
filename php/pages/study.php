@@ -165,7 +165,7 @@ document.querySelectorAll('.record-btn').forEach(function(btn) {
             const res = await fetch('{$record_url = url('record')}', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ session_id: SESSION_ID, chapter_name: CHAPTER_NAME, problem_number: parseInt(pn), result: result })
+                body: JSON.stringify({ session_id: SESSION_ID, chapter_name: CHAPTER_NAME, problem_number: pn, result: result })
             });
             if (!res.ok) { alert('記録に失敗しました (' + res.status + ')'); return; }
             const data = await res.json();
@@ -194,7 +194,7 @@ document.querySelectorAll('.undo-btn').forEach(function(btn) {
             const res = await fetch('{$undo_url = url('undo')}', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ session_id: SESSION_ID, chapter_name: CHAPTER_NAME, problem_number: parseInt(pn) })
+                body: JSON.stringify({ session_id: SESSION_ID, chapter_name: CHAPTER_NAME, problem_number: pn })
             });
             if (!res.ok) { alert('取消に失敗しました (' + res.status + ')'); return; }
             const data = await res.json();
