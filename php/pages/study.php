@@ -134,10 +134,13 @@ include __DIR__ . '/../templates/header.php';
 </div>
 
 <?php
+$cn_json = json_encode($chapter_name);
+$record_url = url('record');
+$undo_url = url('undo');
 $page_scripts = <<<SCRIPT
 <script>
 const SESSION_ID = {$session_id};
-const CHAPTER_NAME = {$cn_json = json_encode($chapter_name)};
+const CHAPTER_NAME = {$cn_json};
 
 function updateDisplay(pn, data) {
     const accEl = document.getElementById('accuracy-' + pn);
@@ -162,7 +165,7 @@ document.querySelectorAll('.record-btn').forEach(function(btn) {
         const row = document.getElementById('row-' + pn);
         row.querySelectorAll('button').forEach(function(b) { b.disabled = true; });
         try {
-            const res = await fetch('{$record_url = url('record')}', {
+            const res = await fetch('{$record_url}', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ session_id: SESSION_ID, chapter_name: CHAPTER_NAME, problem_number: pn, result: result })
@@ -191,7 +194,7 @@ document.querySelectorAll('.undo-btn').forEach(function(btn) {
         const row = document.getElementById('row-' + pn);
         row.querySelectorAll('button').forEach(function(b) { b.disabled = true; });
         try {
-            const res = await fetch('{$undo_url = url('undo')}', {
+            const res = await fetch('{$undo_url}', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ session_id: SESSION_ID, chapter_name: CHAPTER_NAME, problem_number: pn })
