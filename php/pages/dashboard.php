@@ -5,6 +5,8 @@ $max_accuracy_input = $_GET['max_accuracy'] ?? '';
 $max_acc_val = ($max_accuracy_input !== '') ? floatval($max_accuracy_input) : null;
 $before_date_input = $_GET['before_date'] ?? '';
 $days_ago_input = $_GET['days_ago'] ?? '';
+$memo_search_input = $_GET['memo_search'] ?? '';
+$mark_filter = $_GET['mark'] ?? '';
 
 $before_date = null;
 if ($before_date_input !== '') {
@@ -17,15 +19,44 @@ $stats = get_stats($subject, $chapter_filter ?: null, $max_acc_val, $before_date
 $problems = load_problems_from_excel($subject);
 $chapters = array_keys($problems);
 
-// メモを取得
+// メモ・マークを取得
 $db = get_db();
 $memo_map = [];
-if ($stats) {
-    $memo_stmt = $db->prepare("SELECT chapter_name, problem_number, memo FROM memos WHERE subject = ?");
-    $memo_stmt->execute([$subject]);
-    foreach ($memo_stmt->fetchAll() as $m) {
-        $memo_map[$m['chapter_name'] . '::' . $m['problem_number']] = $m['memo'];
-    }
+$memo_stmt = $db->prepare("SELECT chapter_name, problem_number, memo FROM memos WHERE subject = ?");
+$memo_stmt->execute([$subject]);
+foreach ($memo_stmt->fetchAll() as $m) {
+    $memo_map[$m['chapter_name'] . '::' . $m['problem_number']] = $m['memo'];
+}
+
+$mark_map = [];
+$mark_stmt = $db->prepare("SELECT chapter_name, problem_number, mark1, mark2 FROM marks WHERE subject = ?");
+$mark_stmt->execute([$subject]);
+foreach ($mark_stmt->fetchAll() as $m) {
+    $mark_map[$m['chapter_name'] . '::' . $m['problem_number']] = ['mark1' => intval($m['mark1']), 'mark2' => intval($m['mark2'])];
+}
+
+// メモキーワード絞り込み
+if ($memo_search_input !== '') {
+    $keyword = mb_strtolower($memo_search_input);
+    $stats = array_filter($stats, function($s) use ($memo_map, $keyword) {
+        $key = $s['chapter_name'] . '::' . $s['problem_number'];
+        $memo = mb_strtolower($memo_map[$key] ?? '');
+        return strpos($memo, $keyword) !== false;
+    });
+    $stats = array_values($stats);
+}
+
+// マーク絞り込み
+if ($mark_filter !== '') {
+    $stats = array_filter($stats, function($s) use ($mark_map, $mark_filter) {
+        $key = $s['chapter_name'] . '::' . $s['problem_number'];
+        $marks = $mark_map[$key] ?? ['mark1' => 0, 'mark2' => 0];
+        if ($mark_filter === '1') return $marks['mark1'] == 1;
+        if ($mark_filter === '2') return $marks['mark2'] == 1;
+        if ($mark_filter === 'both') return $marks['mark1'] == 1 && $marks['mark2'] == 1;
+        return true;
+    });
+    $stats = array_values($stats);
 }
 
 // 正答率でソート
@@ -61,6 +92,19 @@ include __DIR__ . '/../templates/header.php';
                 <input type="number" name="days_ago" class="form-control" placeholder="例: 60" min="1" value="<?= h($days_ago_input) ?>">
             </div>
             <div class="col-12 col-md-3">
+                <label class="form-label">メモ検索</label>
+                <input type="text" name="memo_search" class="form-control" placeholder="キーワード" value="<?= h($memo_search_input) ?>">
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">マーク絞り込み</label>
+                <select name="mark" class="form-select">
+                    <option value="">すべて</option>
+                    <option value="1" <?= $mark_filter === '1' ? 'selected' : '' ?>>Mark1のみ</option>
+                    <option value="2" <?= $mark_filter === '2' ? 'selected' : '' ?>>Mark2のみ</option>
+                    <option value="both" <?= $mark_filter === 'both' ? 'selected' : '' ?>>Mark1 & Mark2</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-3">
                 <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel"></i> 絞り込み</button>
             </div>
         </form>
@@ -93,14 +137,33 @@ include __DIR__ . '/../templates/header.php';
 <div class="table-responsive">
     <table class="table table-hover table-striped">
         <thead class="table-light">
-            <tr><th style="width:40px"></th><th>チャプター</th><th>問題番号</th><th>正答率</th><th>正解/回答数</th><th>最終学習日</th><th>メモ</th></tr>
+            <tr><th style="width:40px"></th><th>チャプター</th><th>問題番号</th><th style="width:60px">M1</th><th style="width:60px">M2</th><th>正答率</th><th>正解/回答数</th><th>最終学習日</th><th>メモ</th></tr>
         </thead>
         <tbody>
-            <?php foreach ($stats as $s): ?>
+            <?php foreach ($stats as $s):
+                $mk_key = $s['chapter_name'] . '::' . $s['problem_number'];
+                $marks = $mark_map[$mk_key] ?? ['mark1' => 0, 'mark2' => 0];
+                $memo_key = $s['chapter_name'] . '::' . $s['problem_number'];
+                $memo_text = $memo_map[$memo_key] ?? '';
+            ?>
             <tr>
                 <td><input class="form-check-input problem-check" type="checkbox" data-chapter="<?= h($s['chapter_name']) ?>" data-problem="<?= $s['problem_number'] ?>"></td>
                 <td><?= h($s['chapter_name']) ?></td>
                 <td><strong><?= $s['problem_number'] ?></strong></td>
+                <td>
+                    <button class="btn btn-sm mark-btn <?= $marks['mark1'] ? 'btn-danger' : 'btn-outline-secondary' ?>"
+                            data-chapter="<?= h($s['chapter_name']) ?>" data-problem="<?= h($s['problem_number']) ?>"
+                            data-mark-type="mark1" data-value="<?= $marks['mark1'] ?>" title="Mark1">
+                        <i class="bi bi-flag-fill"></i>
+                    </button>
+                </td>
+                <td>
+                    <button class="btn btn-sm mark-btn <?= $marks['mark2'] ? 'btn-primary' : 'btn-outline-secondary' ?>"
+                            data-chapter="<?= h($s['chapter_name']) ?>" data-problem="<?= h($s['problem_number']) ?>"
+                            data-mark-type="mark2" data-value="<?= $marks['mark2'] ?>" title="Mark2">
+                        <i class="bi bi-star-fill"></i>
+                    </button>
+                </td>
                 <td>
                     <div class="d-flex align-items-center gap-2">
                         <div class="progress flex-grow-1" style="height:20px">
@@ -110,8 +173,7 @@ include __DIR__ . '/../templates/header.php';
                 </td>
                 <td><?= $s['correct_count'] ?>/<?= $s['total_attempts'] ?></td>
                 <td class="text-muted"><?= $s['last_study_date'] ?></td>
-                <td>
-                    <?php $memo_key = $s['chapter_name'] . '::' . $s['problem_number']; $memo_text = $memo_map[$memo_key] ?? ''; ?>
+                <td style="white-space: nowrap;">
                     <button class="btn btn-sm btn-outline-secondary memo-edit-btn" title="メモを編集"
                             data-chapter="<?= h($s['chapter_name']) ?>" data-problem="<?= h($s['problem_number']) ?>"
                             data-memo="<?= h($memo_text) ?>">
@@ -169,7 +231,7 @@ include __DIR__ . '/../templates/header.php';
 <?php else: ?>
 <div class="alert alert-info">
     <i class="bi bi-info-circle"></i>
-    <?= ($chapter_filter || $max_accuracy_input) ? '条件に一致するデータがありません。' : 'まだ学習記録がありません。チャプターを選んで学習を始めましょう！' ?>
+    <?= ($chapter_filter || $max_accuracy_input || $memo_search_input || $mark_filter) ? '条件に一致するデータがありません。' : 'まだ学習記録がありません。チャプターを選んで学習を始めましょう！' ?>
 </div>
 <?php endif; ?>
 
@@ -177,6 +239,7 @@ include __DIR__ . '/../templates/header.php';
 $subject_json = json_encode($subject);
 $custom_url = url('start_custom_session');
 $memo_url = url('memo');
+$mark_url = url('mark');
 $page_scripts = <<<SCRIPT
 <script>
 const selectAll = document.getElementById('select-all');
@@ -207,6 +270,30 @@ if (startBtn) {
     });
 }
 
+// マークトグル
+document.querySelectorAll('.mark-btn').forEach(function(btn) {
+    btn.addEventListener('click', async function() {
+        var ch = this.dataset.chapter, pn = this.dataset.problem, mt = this.dataset.markType;
+        var newVal = this.dataset.value === '1' ? 0 : 1;
+        this.disabled = true;
+        try {
+            var res = await fetch('{$mark_url}', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ subject: {$subject_json}, chapter_name: ch, problem_number: pn, mark_type: mt, value: newVal })
+            });
+            if (res.ok) {
+                this.dataset.value = newVal;
+                if (mt === 'mark1') {
+                    this.className = 'btn btn-sm mark-btn ' + (newVal ? 'btn-danger' : 'btn-outline-secondary');
+                } else {
+                    this.className = 'btn btn-sm mark-btn ' + (newVal ? 'btn-primary' : 'btn-outline-secondary');
+                }
+            } else { alert('マークの保存に失敗しました'); }
+        } catch(e) { alert('通信エラー'); }
+        finally { this.disabled = false; }
+    });
+});
+
 // ツールチップ初期化
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
     new bootstrap.Tooltip(el);
@@ -214,14 +301,13 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
 
 // メモ編集
 var memoEditModal = document.getElementById('memoEditModal');
-var memoChapter = '', memoProblem = '', memoEditBtn = null;
+var memoChapter = '', memoProblem = '';
 if (memoEditModal) {
     var bsEditModal = new bootstrap.Modal(memoEditModal);
     document.querySelectorAll('.memo-edit-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
             memoChapter = this.dataset.chapter;
             memoProblem = this.dataset.problem;
-            memoEditBtn = this;
             document.getElementById('memo-problem-label').textContent = memoChapter + ' / ' + memoProblem;
             document.getElementById('memo-textarea').value = this.dataset.memo;
             bsEditModal.show();
@@ -249,7 +335,7 @@ async function saveMemo(chapter, problem, memo) {
     } catch(e) { alert('通信エラー'); }
 }
 
-// メモ表示（クリックで大きく表示）
+// メモ表示
 var memoViewModal = document.getElementById('memoViewModal');
 if (memoViewModal) {
     var bsViewModal = new bootstrap.Modal(memoViewModal);

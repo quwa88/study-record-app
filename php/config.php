@@ -92,6 +92,17 @@ function init_db(): void {
             UNIQUE KEY uq_memo (subject, chapter_name, problem_number)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS marks (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            subject VARCHAR(10) NOT NULL,
+            chapter_name VARCHAR(255) NOT NULL,
+            problem_number VARCHAR(50) NOT NULL,
+            mark1 TINYINT(1) NOT NULL DEFAULT 0,
+            mark2 TINYINT(1) NOT NULL DEFAULT 0,
+            UNIQUE KEY uq_mark (subject, chapter_name, problem_number)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
     // 既存テーブルのproblem_numberをVARCHARに変更
     try {
         $db->exec("ALTER TABLE records MODIFY COLUMN problem_number VARCHAR(50) NOT NULL");

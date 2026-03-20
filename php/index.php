@@ -24,6 +24,9 @@ if ($route === '') {
 } elseif ($route === 'memo' && $method === 'POST') {
     require __DIR__ . '/api/memo.php';
 
+} elseif ($route === 'mark' && $method === 'POST') {
+    require __DIR__ . '/api/mark.php';
+
 } elseif (preg_match('#^([A-Z]+)$#', $route, $m) && in_array($m[1], SUBJECTS)) {
     $subject = $m[1];
     require __DIR__ . '/pages/chapters.php';
