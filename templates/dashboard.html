@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}{{ subject }} ダッシュボード - 演習記録{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-graph-up"></i> {{ subject }} ダッシュボード</h2>
+
+<!-- フィルター -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-12 col-md-4">
+                <label class="form-label">チャプター</label>
+                <select name="chapter" class="form-select">
+                    <option value="">すべて</option>
+                    {% for ch in chapters %}
+                    <option value="{{ ch }}" {{ 'selected' if ch == selected_chapter }}>{{ ch }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label">正答率の上限 (%)</label>
+                <input type="number" name="max_accuracy" class="form-control"
+                       placeholder="例: 60" min="0" max="100" step="1"
+                       value="{{ max_accuracy }}">
+            </div>
+            <div class="col-12 col-md-4">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-funnel"></i> 絞り込み
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 統計サマリー -->
+{% if stats %}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="fs-3 fw-bold text-primary">{{ stats | length }}</div>
+                <div class="text-muted small">問題数</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="fs-3 fw-bold text-success">
+                    {{ "%.1f" | format(stats | map(attribute='accuracy') | list | sum / stats | length) }}%
+                </div>
+                <div class="text-muted small">平均正答率</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="fs-3 fw-bold text-info">
+                    {{ stats | map(attribute='total_attempts') | list | sum }}
+                </div>
+                <div class="text-muted small">総回答数</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="fs-3 fw-bold text-warning">
+                    {{ stats | selectattr('accuracy', 'lt', 60) | list | length }}
+                </div>
+                <div class="text-muted small">正答率60%未満</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 選択した問題で学習ボタン -->
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="select-all">
+        <label class="form-check-label" for="select-all">すべて選択</label>
+    </div>
+    <button id="start-selected-btn" class="btn btn-primary" disabled>
+        <i class="bi bi-play-fill"></i> 選択した問題で学習 (<span id="selected-count">0</span>問)
+    </button>
+</div>
+
+<!-- 問題一覧テーブル -->
+<div class="table-responsive">
+    <table class="table table-hover table-striped">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 40px;"></th>
+                <th>チャプター</th>
+                <th>問題番号</th>
+                <th>正答率</th>
+                <th>正解/回答数</th>
+                <th>最終学習日</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in stats | sort(attribute='accuracy') %}
+            <tr>
+                <td>
+                    <input class="form-check-input problem-check" type="checkbox"
+                           data-chapter="{{ s.chapter_name }}" data-problem="{{ s.problem_number }}">
+                </td>
+                <td>{{ s.chapter_name }}</td>
+                <td><strong>{{ s.problem_number }}</strong></td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="progress flex-grow-1" style="height: 20px;">
+                            <div class="progress-bar bg-{{ 'success' if s.accuracy >= 80 else 'warning' if s.accuracy >= 60 else 'danger' }}"
+                                 style="width: {{ s.accuracy }}%">
+                                {{ s.accuracy }}%
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td>{{ s.correct_count }}/{{ s.total_attempts }}</td>
+                <td class="text-muted">{{ s.last_study_date }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    {% if selected_chapter or max_accuracy %}
+        条件に一致するデータがありません。
+    {% else %}
+        まだ学習記録がありません。チャプターを選んで学習を始めましょう！
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const selectAll = document.getElementById('select-all');
+const checks = document.querySelectorAll('.problem-check');
+const startBtn = document.getElementById('start-selected-btn');
+const countSpan = document.getElementById('selected-count');
+
+function updateCount() {
+    const checked = document.querySelectorAll('.problem-check:checked');
+    const count = checked.length;
+    countSpan.textContent = count;
+    startBtn.disabled = count === 0;
+    selectAll.checked = checks.length > 0 && checked.length === checks.length;
+    selectAll.indeterminate = checked.length > 0 && checked.length < checks.length;
+}
+
+if (selectAll) {
+    selectAll.addEventListener('change', function() {
+        checks.forEach(cb => cb.checked = this.checked);
+        updateCount();
+    });
+}
+
+checks.forEach(cb => cb.addEventListener('change', updateCount));
+
+if (startBtn) {
+    startBtn.addEventListener('click', async function() {
+        const selected = [];
+        document.querySelectorAll('.problem-check:checked').forEach(cb => {
+            selected.push({
+                chapter_name: cb.dataset.chapter,
+                problem_number: parseInt(cb.dataset.problem),
+            });
+        });
+
+        if (selected.length === 0) return;
+
+        startBtn.disabled = true;
+        startBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 作成中...';
+
+        try {
+            const res = await fetch('/start_custom_session', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ problems: selected, subject: {{ subject | tojson }} }),
+            });
+
+            if (!res.ok) {
+                alert('セッションの作成に失敗しました');
+                return;
+            }
+
+            const data = await res.json();
+            if (data.redirect) {
+                window.location.href = data.redirect;
+            }
+        } catch (e) {
+            console.error(e);
+            alert('通信エラーが発生しました');
+        } finally {
+            startBtn.disabled = false;
+            startBtn.innerHTML = '<i class="bi bi-play-fill"></i> 選択した問題で学習 (<span id="selected-count">0</span>問)';
+            updateCount();
+        }
+    });
+}
+</script>
+{% endblock %}

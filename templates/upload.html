@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{{ subject }} Excel管理 - 演習記録{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-upload"></i> {{ subject }} Excel管理</h2>
+
+<!-- アップロードフォーム -->
+<div class="card mb-4">
+    <div class="card-header">Excelファイルのアップロード</div>
+    <div class="card-body">
+        <p class="text-muted">
+            Excelファイルの形式: 1列目に「チャプター名」、2列目に「問題番号」（1行目はヘッダー）
+        </p>
+        <form method="POST" enctype="multipart/form-data" class="d-flex gap-2">
+            <input type="file" name="file" accept=".xlsx,.xls" class="form-control" required>
+            <button type="submit" class="btn btn-primary text-nowrap">
+                <i class="bi bi-upload"></i> アップロード
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- 現在の問題データ -->
+<div class="card">
+    <div class="card-header">
+        現在の問題データ
+        <span class="badge bg-primary ms-2">合計 {{ total_problems }}問</span>
+    </div>
+    <div class="card-body">
+        {% if problems %}
+        <div class="accordion" id="problemAccordion">
+            {% for chapter, numbers in problems.items() %}
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#collapse-{{ loop.index }}">
+                        {{ chapter }}
+                        <span class="badge bg-secondary ms-2">{{ numbers | length }}問</span>
+                    </button>
+                </h2>
+                <div id="collapse-{{ loop.index }}" class="accordion-collapse collapse"
+                     data-bs-parent="#problemAccordion">
+                    <div class="accordion-body">
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for n in numbers %}
+                            <span class="badge bg-light text-dark border">{{ n }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Excelファイルがアップロードされていません。</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

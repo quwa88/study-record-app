@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}カスタム学習 - 演習記録{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0"><i class="bi bi-pencil-square"></i> カスタム学習</h2>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="text-muted">
+        <i class="bi bi-calendar"></i> {{ study_date }}
+        <span class="ms-3">
+            <i class="bi bi-check2-square"></i> 回答済: <strong id="answered-count">{{ answered }}</strong>/{{ total_problems }}
+        </span>
+    </div>
+    <form method="POST" action="{{ url_for('finish_session', subject=subject, session_id=session_id) }}"
+          onsubmit="return confirm('学習を終了しますか？記録が保存されます。')">
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-circle"></i> 学習終了
+        </button>
+    </form>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>チャプター</th>
+                <th style="width: 80px;">問題</th>
+                <th style="width: 220px;">回答</th>
+                <th>累計正答率</th>
+                <th>累計回数</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in problem_list %}
+            {% set key = p.chapter_name ~ '_' ~ p.problem_number %}
+            <tr id="row-{{ loop.index0 }}" class="{{ 'table-success' if problem_stats[key].session_result == 'correct' else 'table-danger' if problem_stats[key].session_result == 'incorrect' else '' }}">
+                <td class="text-muted small">{{ p.chapter_name }}</td>
+                <td><strong>{{ p.problem_number }}</strong></td>
+                <td>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn btn-outline-success record-btn {{ 'active' if problem_stats[key].session_result == 'correct' }}"
+                                data-index="{{ loop.index0 }}"
+                                data-chapter="{{ p.chapter_name }}"
+                                data-problem="{{ p.problem_number }}" data-result="correct">
+                            <i class="bi bi-circle"></i> 正解
+                        </button>
+                        <button class="btn btn-outline-danger record-btn {{ 'active' if problem_stats[key].session_result == 'incorrect' }}"
+                                data-index="{{ loop.index0 }}"
+                                data-chapter="{{ p.chapter_name }}"
+                                data-problem="{{ p.problem_number }}" data-result="incorrect">
+                            <i class="bi bi-x-lg"></i> 不正解
+                        </button>
+                        <button class="btn btn-outline-secondary undo-btn"
+                                data-index="{{ loop.index0 }}"
+                                data-chapter="{{ p.chapter_name }}"
+                                data-problem="{{ p.problem_number }}" title="取消"
+                                {{ 'disabled' if not problem_stats[key].session_result }}>
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <span id="accuracy-{{ loop.index0 }}">
+                        {% if problem_stats[key].accuracy is not none %}
+                            <span class="badge bg-{{ 'success' if problem_stats[key].accuracy >= 80 else 'warning' if problem_stats[key].accuracy >= 60 else 'danger' }}">
+                                {{ problem_stats[key].accuracy }}%
+                            </span>
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </span>
+                </td>
+                <td>
+                    <span id="count-{{ loop.index0 }}">
+                        {% if problem_stats[key].total > 0 %}
+                            {{ problem_stats[key].correct }}/{{ problem_stats[key].total }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SESSION_ID = {{ session_id }};
+
+function updateDisplay(idx, data) {
+    const accEl = document.getElementById(`accuracy-${idx}`);
+    if (data.accuracy !== null && data.total > 0) {
+        let color = 'danger';
+        if (data.accuracy >= 80) color = 'success';
+        else if (data.accuracy >= 60) color = 'warning';
+        accEl.innerHTML = `<span class="badge bg-${color}">${data.accuracy}%</span>`;
+    } else {
+        accEl.innerHTML = '<span class="text-muted">-</span>';
+    }
+
+    const countEl = document.getElementById(`count-${idx}`);
+    countEl.textContent = data.total > 0 ? `${data.correct}/${data.total}` : '-';
+
+    document.getElementById('answered-count').textContent = data.answered;
+}
+
+document.querySelectorAll('.record-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const idx = this.dataset.index;
+        const chapterName = this.dataset.chapter;
+        const pn = this.dataset.problem;
+        const result = this.dataset.result;
+        const clickedBtn = this;
+
+        if (clickedBtn.disabled) return;
+        const row = document.getElementById(`row-${idx}`);
+        row.querySelectorAll('button').forEach(b => b.disabled = true);
+
+        try {
+            const res = await fetch('/record', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    session_id: SESSION_ID,
+                    chapter_name: chapterName,
+                    problem_number: parseInt(pn),
+                    result: result,
+                })
+            });
+
+            if (!res.ok) {
+                alert(`記録に失敗しました (${res.status})`);
+                return;
+            }
+
+            const data = await res.json();
+            if (data.success) {
+                updateDisplay(idx, data);
+                row.className = result === 'correct' ? 'table-success' : 'table-danger';
+                row.querySelectorAll('.record-btn').forEach(b => b.classList.remove('active'));
+                clickedBtn.classList.add('active');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('通信エラーが発生しました');
+        } finally {
+            row.querySelectorAll('.record-btn').forEach(b => b.disabled = false);
+            row.querySelector('.undo-btn').disabled = false;
+        }
+    });
+});
+
+document.querySelectorAll('.undo-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const idx = this.dataset.index;
+        const chapterName = this.dataset.chapter;
+        const pn = this.dataset.problem;
+        const undoBtn = this;
+
+        if (undoBtn.disabled) return;
+        const row = document.getElementById(`row-${idx}`);
+        row.querySelectorAll('button').forEach(b => b.disabled = true);
+
+        try {
+            const res = await fetch('/undo', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    session_id: SESSION_ID,
+                    chapter_name: chapterName,
+                    problem_number: parseInt(pn),
+                })
+            });
+
+            if (!res.ok) {
+                alert(`取消に失敗しました (${res.status})`);
+                return;
+            }
+
+            const data = await res.json();
+            if (data.success) {
+                updateDisplay(idx, data);
+                row.className = '';
+                row.querySelectorAll('.record-btn').forEach(b => b.classList.remove('active'));
+                undoBtn.disabled = true;
+            }
+        } catch (e) {
+            console.error(e);
+            alert('通信エラーが発生しました');
+        } finally {
+            row.querySelectorAll('.record-btn').forEach(b => b.disabled = false);
+        }
+    });
+});
+</script>
+{% endblock %}

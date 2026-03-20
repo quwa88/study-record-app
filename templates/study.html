@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}{{ chapter_name }} - 演習記録{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0"><i class="bi bi-pencil-square"></i> {{ chapter_name }}</h2>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="text-muted">
+        <i class="bi bi-calendar"></i> {{ study_date }}
+        <span class="ms-3">
+            <i class="bi bi-check2-square"></i> 回答済: <strong id="answered-count">{{ answered }}</strong>/{{ total_problems }}
+        </span>
+    </div>
+    <form method="POST" action="{{ url_for('finish_session', subject=subject, session_id=session_id) }}"
+          onsubmit="return confirm('学習を終了しますか？記録が保存されます。')">
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-circle"></i> 学習終了
+        </button>
+    </form>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 80px;">問題</th>
+                <th style="width: 220px;">回答</th>
+                <th>累計正答率</th>
+                <th>累計回数</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pn in problem_numbers %}
+            <tr id="row-{{ pn }}" class="{{ 'table-success' if problem_stats[pn].session_result == 'correct' else 'table-danger' if problem_stats[pn].session_result == 'incorrect' else '' }}">
+                <td><strong>{{ pn }}</strong></td>
+                <td>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn btn-outline-success record-btn {{ 'active' if problem_stats[pn].session_result == 'correct' }}"
+                                data-problem="{{ pn }}" data-result="correct">
+                            <i class="bi bi-circle"></i> 正解
+                        </button>
+                        <button class="btn btn-outline-danger record-btn {{ 'active' if problem_stats[pn].session_result == 'incorrect' }}"
+                                data-problem="{{ pn }}" data-result="incorrect">
+                            <i class="bi bi-x-lg"></i> 不正解
+                        </button>
+                        <button class="btn btn-outline-secondary undo-btn"
+                                data-problem="{{ pn }}" title="取消"
+                                {{ 'disabled' if not problem_stats[pn].session_result }}>
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <span id="accuracy-{{ pn }}">
+                        {% if problem_stats[pn].accuracy is not none %}
+                            <span class="badge bg-{{ 'success' if problem_stats[pn].accuracy >= 80 else 'warning' if problem_stats[pn].accuracy >= 60 else 'danger' }}">
+                                {{ problem_stats[pn].accuracy }}%
+                            </span>
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </span>
+                </td>
+                <td>
+                    <span id="count-{{ pn }}">
+                        {% if problem_stats[pn].total > 0 %}
+                            {{ problem_stats[pn].correct }}/{{ problem_stats[pn].total }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SESSION_ID = {{ session_id }};
+const CHAPTER_NAME = {{ chapter_name | tojson }};
+
+function updateDisplay(pn, data) {
+    const accEl = document.getElementById(`accuracy-${pn}`);
+    if (data.accuracy !== null && data.total > 0) {
+        let color = 'danger';
+        if (data.accuracy >= 80) color = 'success';
+        else if (data.accuracy >= 60) color = 'warning';
+        accEl.innerHTML = `<span class="badge bg-${color}">${data.accuracy}%</span>`;
+    } else {
+        accEl.innerHTML = '<span class="text-muted">-</span>';
+    }
+
+    const countEl = document.getElementById(`count-${pn}`);
+    countEl.textContent = data.total > 0 ? `${data.correct}/${data.total}` : '-';
+
+    document.getElementById('answered-count').textContent = data.answered;
+}
+
+document.querySelectorAll('.record-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const pn = this.dataset.problem;
+        const result = this.dataset.result;
+        const clickedBtn = this;
+
+        if (clickedBtn.disabled) return;
+        const row = document.getElementById(`row-${pn}`);
+        row.querySelectorAll('button').forEach(b => b.disabled = true);
+
+        try {
+            const res = await fetch('/record', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    session_id: SESSION_ID,
+                    chapter_name: CHAPTER_NAME,
+                    problem_number: parseInt(pn),
+                    result: result,
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.text();
+                console.error('Record API error:', res.status, err);
+                alert(`記録に失敗しました (${res.status})`);
+                return;
+            }
+
+            const data = await res.json();
+            if (data.success) {
+                updateDisplay(pn, data);
+                row.className = result === 'correct' ? 'table-success' : 'table-danger';
+                row.querySelectorAll('.record-btn').forEach(b => b.classList.remove('active'));
+                clickedBtn.classList.add('active');
+            }
+        } catch (e) {
+            console.error('Record fetch error:', e);
+            alert('通信エラーが発生しました。ページを再読み込みしてください。');
+        } finally {
+            row.querySelectorAll('.record-btn').forEach(b => b.disabled = false);
+            row.querySelector('.undo-btn').disabled = false;
+        }
+    });
+});
+
+document.querySelectorAll('.undo-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const pn = this.dataset.problem;
+        const undoBtn = this;
+
+        if (undoBtn.disabled) return;
+        const row = document.getElementById(`row-${pn}`);
+        row.querySelectorAll('button').forEach(b => b.disabled = true);
+
+        try {
+            const res = await fetch('/undo', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    session_id: SESSION_ID,
+                    chapter_name: CHAPTER_NAME,
+                    problem_number: parseInt(pn),
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.text();
+                console.error('Undo API error:', res.status, err);
+                alert(`取消に失敗しました (${res.status})`);
+                return;
+            }
+
+            const data = await res.json();
+            if (data.success) {
+                updateDisplay(pn, data);
+                row.className = '';
+                row.querySelectorAll('.record-btn').forEach(b => b.classList.remove('active'));
+                undoBtn.disabled = true;
+            }
+        } catch (e) {
+            console.error('Undo fetch error:', e);
+            alert('通信エラーが発生しました。ページを再読み込みしてください。');
+        } finally {
+            row.querySelectorAll('.record-btn').forEach(b => b.disabled = false);
+        }
+    });
+});
+</script>
+{% endblock %}
