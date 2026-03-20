@@ -18,6 +18,7 @@ $problems = load_problems_from_excel($subject);
 $chapters = array_keys($problems);
 
 // メモを取得
+$db = get_db();
 $memo_map = [];
 if ($stats) {
     $memo_stmt = $db->prepare("SELECT chapter_name, problem_number, memo FROM memos WHERE subject = ?");
