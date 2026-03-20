@@ -21,7 +21,8 @@ foreach ($stmt->fetchAll() as $row) {
 }
 
 $stat_stmt = $db->prepare("
-    SELECT COUNT(*) as total, SUM(CASE WHEN r.result = 'correct' THEN 1 ELSE 0 END) as correct
+    SELECT COUNT(*) as total, SUM(CASE WHEN r.result = 'correct' THEN 1 ELSE 0 END) as correct,
+    MAX(r.study_date) as last_study_date
     FROM records r JOIN sessions s ON r.session_id = s.id
     WHERE s.finished_at IS NOT NULL AND r.chapter_name = ? AND r.problem_number = ?
 ");
@@ -34,6 +35,7 @@ foreach ($custom_problems as $p) {
     $problem_stats[$key] = [
         'total' => $total, 'correct' => $correct,
         'accuracy' => $total > 0 ? round(100.0 * $correct / $total, 1) : null,
+        'last_study_date' => $row['last_study_date'] ?? null,
         'session_result' => $session_records[$key] ?? null,
     ];
 }
@@ -61,7 +63,7 @@ include __DIR__ . '/../templates/header.php';
 <div class="table-responsive">
     <table class="table table-hover align-middle">
         <thead class="table-light">
-            <tr><th>チャプター</th><th style="width:80px">問題</th><th style="width:220px">回答</th><th>累計正答率</th><th>累計回数</th></tr>
+            <tr><th>チャプター</th><th style="width:80px">問題</th><th style="width:220px">回答</th><th>累計正答率</th><th>累計回数</th><th>最終学習日</th></tr>
         </thead>
         <tbody>
             <?php foreach ($custom_problems as $idx => $p):
@@ -89,6 +91,7 @@ include __DIR__ . '/../templates/header.php';
                 </td>
                 <td><span id="accuracy-<?= $idx ?>"><?php if ($ps['accuracy'] !== null): ?><span class="badge bg-<?= $ps['accuracy'] >= 80 ? 'success' : ($ps['accuracy'] >= 60 ? 'warning' : 'danger') ?>"><?= $ps['accuracy'] ?>%</span><?php else: ?><span class="text-muted">-</span><?php endif; ?></span></td>
                 <td><span id="count-<?= $idx ?>"><?= $ps['total'] > 0 ? "{$ps['correct']}/{$ps['total']}" : '-' ?></span></td>
+                <td class="text-muted small"><?= $ps['last_study_date'] ? h($ps['last_study_date']) : '-' ?></td>
             </tr>
             <?php endforeach; ?>
         </tbody>

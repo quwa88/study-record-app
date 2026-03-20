@@ -33,7 +33,8 @@ foreach ($stmt->fetchAll() as $row) {
 // 各問題の累計統計
 $problem_stats = [];
 $stat_stmt = $db->prepare("
-    SELECT COUNT(*) as total, SUM(CASE WHEN r.result = 'correct' THEN 1 ELSE 0 END) as correct
+    SELECT COUNT(*) as total, SUM(CASE WHEN r.result = 'correct' THEN 1 ELSE 0 END) as correct,
+    MAX(r.study_date) as last_study_date
     FROM records r JOIN sessions s ON r.session_id = s.id
     WHERE s.finished_at IS NOT NULL AND r.chapter_name = ? AND r.problem_number = ?
 ");
@@ -47,6 +48,7 @@ foreach ($problem_numbers as $pn) {
         'total' => $total,
         'correct' => $correct,
         'accuracy' => $accuracy,
+        'last_study_date' => $row['last_study_date'] ?? null,
         'session_result' => $session_records[$pn] ?? null,
     ];
 }
@@ -85,6 +87,7 @@ include __DIR__ . '/../templates/header.php';
                 <th style="width: 220px;">回答</th>
                 <th>累計正答率</th>
                 <th>累計回数</th>
+                <th>最終学習日</th>
             </tr>
         </thead>
         <tbody>
@@ -126,6 +129,9 @@ include __DIR__ . '/../templates/header.php';
                     <span id="count-<?= $pn ?>">
                         <?= $ps['total'] > 0 ? "{$ps['correct']}/{$ps['total']}" : '-' ?>
                     </span>
+                </td>
+                <td class="text-muted small">
+                    <?= $ps['last_study_date'] ? h($ps['last_study_date']) : '-' ?>
                 </td>
             </tr>
             <?php endforeach; ?>

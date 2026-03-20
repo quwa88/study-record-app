@@ -46,7 +46,7 @@ function load_problems_from_excel(string $subject): array {
 /**
  * 問題ごとの統計を取得（完了済みセッションのみ）
  */
-function get_stats(?string $subject = null, ?string $chapter_name = null, ?float $max_accuracy = null): array {
+function get_stats(?string $subject = null, ?string $chapter_name = null, ?float $max_accuracy = null, ?string $before_date = null): array {
     $db = get_db();
 
     $sql = "
@@ -83,6 +83,13 @@ function get_stats(?string $subject = null, ?string $chapter_name = null, ?float
     if ($max_accuracy !== null) {
         $stats = array_filter($stats, function($s) use ($max_accuracy) {
             return floatval($s['accuracy']) <= $max_accuracy;
+        });
+        $stats = array_values($stats);
+    }
+
+    if ($before_date !== null) {
+        $stats = array_filter($stats, function($s) use ($before_date) {
+            return $s['last_study_date'] <= $before_date;
         });
         $stats = array_values($stats);
     }

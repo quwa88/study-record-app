@@ -3,8 +3,17 @@ $page_title = "$subject ダッシュボード - 演習記録";
 $chapter_filter = $_GET['chapter'] ?? '';
 $max_accuracy_input = $_GET['max_accuracy'] ?? '';
 $max_acc_val = ($max_accuracy_input !== '') ? floatval($max_accuracy_input) : null;
+$before_date_input = $_GET['before_date'] ?? '';
+$days_ago_input = $_GET['days_ago'] ?? '';
 
-$stats = get_stats($subject, $chapter_filter ?: null, $max_acc_val);
+$before_date = null;
+if ($before_date_input !== '') {
+    $before_date = $before_date_input;
+} elseif ($days_ago_input !== '') {
+    $before_date = date('Y-m-d', strtotime("-{$days_ago_input} days"));
+}
+
+$stats = get_stats($subject, $chapter_filter ?: null, $max_acc_val, $before_date);
 $problems = load_problems_from_excel($subject);
 $chapters = array_keys($problems);
 
@@ -19,7 +28,7 @@ include __DIR__ . '/../templates/header.php';
 <div class="card mb-4">
     <div class="card-body">
         <form method="GET" class="row g-3 align-items-end">
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
                 <label class="form-label">チャプター</label>
                 <select name="chapter" class="form-select">
                     <option value="">すべて</option>
@@ -28,11 +37,19 @@ include __DIR__ . '/../templates/header.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
                 <label class="form-label">正答率の上限 (%)</label>
                 <input type="number" name="max_accuracy" class="form-control" placeholder="例: 60" min="0" max="100" step="1" value="<?= h($max_accuracy_input) ?>">
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
+                <label class="form-label">最終学習日以前</label>
+                <input type="date" name="before_date" class="form-control" value="<?= h($before_date_input) ?>">
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">未学習日数以上</label>
+                <input type="number" name="days_ago" class="form-control" placeholder="例: 60" min="1" value="<?= h($days_ago_input) ?>">
+            </div>
+            <div class="col-12 col-md-3">
                 <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel"></i> 絞り込み</button>
             </div>
         </form>
@@ -115,7 +132,7 @@ checks.forEach(cb => cb.addEventListener('change', updateCount));
 if (startBtn) {
     startBtn.addEventListener('click', async function() {
         const selected = [];
-        document.querySelectorAll('.problem-check:checked').forEach(cb => { selected.push({ chapter_name: cb.dataset.chapter, problem_number: parseInt(cb.dataset.problem) }); });
+        document.querySelectorAll('.problem-check:checked').forEach(cb => { selected.push({ chapter_name: cb.dataset.chapter, problem_number: cb.dataset.problem }); });
         if (!selected.length) return;
         startBtn.disabled = true; startBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 作成中...';
         try {
