@@ -42,7 +42,7 @@ foreach ($custom_problems as $p) {
 
 $answered = count($session_records);
 $total_problems = count($custom_problems);
-$page_title = 'カスタム学習 - 演習記録';
+$page_title = 'カスタム学習 - USCPA学習記録アプリ';
 
 include __DIR__ . '/../templates/header.php';
 ?>

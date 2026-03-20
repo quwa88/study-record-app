@@ -1,5 +1,5 @@
 <?php
-$page_title = "$subject チャプター選択 - 演習記録";
+$page_title = "$subject チャプター選択 - USCPA学習記録アプリ";
 $problems = load_problems_from_excel($subject);
 $chapters = array_keys($problems);
 

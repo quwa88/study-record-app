@@ -1,5 +1,5 @@
 <?php
-$page_title = "$subject ダッシュボード - 演習記録";
+$page_title = "$subject ダッシュボード - USCPA学習記録アプリ";
 $chapter_filter = $_GET['chapter'] ?? '';
 $max_accuracy_input = $_GET['max_accuracy'] ?? '';
 $max_acc_val = ($max_accuracy_input !== '') ? floatval($max_accuracy_input) : null;

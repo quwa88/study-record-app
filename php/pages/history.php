@@ -1,5 +1,5 @@
 <?php
-$page_title = "$subject 学習履歴 - 演習記録";
+$page_title = "$subject 学習履歴 - USCPA学習記録アプリ";
 $db = get_db();
 $stmt = $db->prepare("
     SELECT r.chapter_name, r.problem_number, r.result, r.study_date, r.created_at, r.session_id

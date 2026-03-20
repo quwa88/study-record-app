@@ -1,5 +1,5 @@
 <?php
-$page_title = "$subject Excel管理 - 演習記録";
+$page_title = "$subject Excel管理 - USCPA学習記録アプリ";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {

@@ -55,7 +55,7 @@ foreach ($problem_numbers as $pn) {
 
 $answered = count(array_filter($session_records));
 $total_problems = count($problem_numbers);
-$page_title = "$chapter_name - 演習記録";
+$page_title = "$chapter_name - USCPA学習記録アプリ";
 
 include __DIR__ . '/../templates/header.php';
 ?>

@@ -1,5 +1,5 @@
 <?php
-$page_title = '科目選択 - 演習記録';
+$page_title = '科目選択 - USCPA学習記録アプリ';
 $subject = '';
 $db = get_db();
 
