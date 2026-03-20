@@ -75,7 +75,7 @@ include __DIR__ . '/../templates/header.php';
                 <td class="text-muted small"><?= h($p['chapter_name']) ?></td>
                 <td style="white-space: nowrap;"><strong><?= $p['problem_number'] ?></strong></td>
                 <td>
-                    <div class="btn-group btn-group-sm" role="group">
+                    <div class="btn-group" role="group">
                         <button class="btn btn-outline-success record-btn <?= $ps['session_result'] === 'correct' ? 'active' : '' ?>"
                                 data-index="<?= $idx ?>" data-chapter="<?= h($p['chapter_name']) ?>" data-problem="<?= $p['problem_number'] ?>" data-result="correct">
                             <i class="bi bi-circle"></i>

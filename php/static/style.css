@@ -46,10 +46,10 @@ body {
     white-space: nowrap;
 }
 
-/* 回答ボタンのレスポンシブ対応 */
-.btn-group-sm .btn {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.825rem;
+/* 回答ボタン（○×）のサイズ */
+.record-btn, .undo-btn {
+    padding: 0.4rem 0.75rem;
+    font-size: 1.25rem;
 }
 
 /* プログレスバー内テキスト */
@@ -60,9 +60,9 @@ body {
 
 /* モバイル対応 */
 @media (max-width: 576px) {
-    .btn-group-sm .btn {
-        padding: 0.4rem 0.6rem;
-        font-size: 0.9rem;
+    .record-btn, .undo-btn {
+        padding: 0.5rem 0.8rem;
+        font-size: 1.3rem;
     }
 
     h2 {

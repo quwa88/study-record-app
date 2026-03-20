@@ -98,7 +98,7 @@ include __DIR__ . '/../templates/header.php';
             <tr id="row-<?= $pn ?>" class="<?= $row_class ?>">
                 <td style="white-space: nowrap;"><strong><?= $pn ?></strong></td>
                 <td>
-                    <div class="btn-group btn-group-sm" role="group">
+                    <div class="btn-group" role="group">
                         <button class="btn btn-outline-success record-btn <?= $ps['session_result'] === 'correct' ? 'active' : '' ?>"
                                 data-problem="<?= $pn ?>" data-result="correct">
                             <i class="bi bi-circle"></i>
