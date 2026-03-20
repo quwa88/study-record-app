@@ -1,0 +1,132 @@
+<?php
+$page_title = "$subject ダッシュボード - 演習記録";
+$chapter_filter = $_GET['chapter'] ?? '';
+$max_accuracy_input = $_GET['max_accuracy'] ?? '';
+$max_acc_val = ($max_accuracy_input !== '') ? floatval($max_accuracy_input) : null;
+
+$stats = get_stats($subject, $chapter_filter ?: null, $max_acc_val);
+$problems = load_problems_from_excel($subject);
+$chapters = array_keys($problems);
+
+// 正答率でソート
+usort($stats, function($a, $b) { return floatval($a['accuracy']) <=> floatval($b['accuracy']); });
+
+include __DIR__ . '/../templates/header.php';
+?>
+
+<h2 class="mb-4"><i class="bi bi-graph-up"></i> <?= h($subject) ?> ダッシュボード</h2>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-12 col-md-4">
+                <label class="form-label">チャプター</label>
+                <select name="chapter" class="form-select">
+                    <option value="">すべて</option>
+                    <?php foreach ($chapters as $ch): ?>
+                    <option value="<?= h($ch) ?>" <?= $ch === $chapter_filter ? 'selected' : '' ?>><?= h($ch) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label">正答率の上限 (%)</label>
+                <input type="number" name="max_accuracy" class="form-control" placeholder="例: 60" min="0" max="100" step="1" value="<?= h($max_accuracy_input) ?>">
+            </div>
+            <div class="col-12 col-md-4">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel"></i> 絞り込み</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<?php if ($stats): ?>
+<?php
+    $avg_accuracy = count($stats) > 0 ? round(array_sum(array_column($stats, 'accuracy')) / count($stats), 1) : 0;
+    $total_attempts = array_sum(array_column($stats, 'total_attempts'));
+    $below60 = count(array_filter($stats, function($s) { return floatval($s['accuracy']) < 60; }));
+?>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3"><div class="card text-center"><div class="card-body"><div class="fs-3 fw-bold text-primary"><?= count($stats) ?></div><div class="text-muted small">問題数</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card text-center"><div class="card-body"><div class="fs-3 fw-bold text-success"><?= $avg_accuracy ?>%</div><div class="text-muted small">平均正答率</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card text-center"><div class="card-body"><div class="fs-3 fw-bold text-info"><?= $total_attempts ?></div><div class="text-muted small">総回答数</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card text-center"><div class="card-body"><div class="fs-3 fw-bold text-warning"><?= $below60 ?></div><div class="text-muted small">正答率60%未満</div></div></div></div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="select-all">
+        <label class="form-check-label" for="select-all">すべて選択</label>
+    </div>
+    <button id="start-selected-btn" class="btn btn-primary" disabled>
+        <i class="bi bi-play-fill"></i> 選択した問題で学習 (<span id="selected-count">0</span>問)
+    </button>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover table-striped">
+        <thead class="table-light">
+            <tr><th style="width:40px"></th><th>チャプター</th><th>問題番号</th><th>正答率</th><th>正解/回答数</th><th>最終学習日</th></tr>
+        </thead>
+        <tbody>
+            <?php foreach ($stats as $s): ?>
+            <tr>
+                <td><input class="form-check-input problem-check" type="checkbox" data-chapter="<?= h($s['chapter_name']) ?>" data-problem="<?= $s['problem_number'] ?>"></td>
+                <td><?= h($s['chapter_name']) ?></td>
+                <td><strong><?= $s['problem_number'] ?></strong></td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="progress flex-grow-1" style="height:20px">
+                            <div class="progress-bar bg-<?= floatval($s['accuracy']) >= 80 ? 'success' : (floatval($s['accuracy']) >= 60 ? 'warning' : 'danger') ?>" style="width:<?= $s['accuracy'] ?>%"><?= $s['accuracy'] ?>%</div>
+                        </div>
+                    </div>
+                </td>
+                <td><?= $s['correct_count'] ?>/<?= $s['total_attempts'] ?></td>
+                <td class="text-muted"><?= $s['last_study_date'] ?></td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?php else: ?>
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    <?= ($chapter_filter || $max_accuracy_input) ? '条件に一致するデータがありません。' : 'まだ学習記録がありません。チャプターを選んで学習を始めましょう！' ?>
+</div>
+<?php endif; ?>
+
+<?php
+$subject_json = json_encode($subject);
+$custom_url = url('start_custom_session');
+$page_scripts = <<<SCRIPT
+<script>
+const selectAll = document.getElementById('select-all');
+const checks = document.querySelectorAll('.problem-check');
+const startBtn = document.getElementById('start-selected-btn');
+const countSpan = document.getElementById('selected-count');
+function updateCount() {
+    const checked = document.querySelectorAll('.problem-check:checked');
+    if (!countSpan) return;
+    countSpan.textContent = checked.length;
+    startBtn.disabled = checked.length === 0;
+    if (selectAll) { selectAll.checked = checks.length > 0 && checked.length === checks.length; selectAll.indeterminate = checked.length > 0 && checked.length < checks.length; }
+}
+if (selectAll) { selectAll.addEventListener('change', function() { checks.forEach(cb => cb.checked = this.checked); updateCount(); }); }
+checks.forEach(cb => cb.addEventListener('change', updateCount));
+if (startBtn) {
+    startBtn.addEventListener('click', async function() {
+        const selected = [];
+        document.querySelectorAll('.problem-check:checked').forEach(cb => { selected.push({ chapter_name: cb.dataset.chapter, problem_number: parseInt(cb.dataset.problem) }); });
+        if (!selected.length) return;
+        startBtn.disabled = true; startBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 作成中...';
+        try {
+            const res = await fetch('{$custom_url}', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ problems: selected, subject: {$subject_json} }) });
+            if (!res.ok) { alert('セッション作成失敗'); return; }
+            const data = await res.json();
+            if (data.redirect) window.location.href = data.redirect;
+        } catch(e) { alert('通信エラー'); } finally { startBtn.disabled = false; startBtn.innerHTML = '<i class="bi bi-play-fill"></i> 選択した問題で学習 (<span id="selected-count">0</span>問)'; updateCount(); }
+    });
+}
+</script>
+SCRIPT;
+include __DIR__ . '/../templates/footer.php';
+?>

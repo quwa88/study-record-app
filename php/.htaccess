@@ -1,0 +1,13 @@
+RewriteEngine On
+
+# .envファイルへのアクセスを禁止
+<Files ".env">
+    Require all denied
+</Files>
+
+# 実ファイル・ディレクトリはそのまま
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# 全リクエストをindex.phpへ
+RewriteRule ^(.*)$ index.php?route=$1 [QSA,L]

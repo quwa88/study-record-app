@@ -7,3 +7,5 @@ data/
 *.db-wal
 *.db-shm
 render.yaml
+php/vendor/
+php/data/
