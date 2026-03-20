@@ -81,6 +81,17 @@ function init_db(): void {
             FOREIGN KEY (session_id) REFERENCES sessions(id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS memos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            subject VARCHAR(10) NOT NULL,
+            chapter_name VARCHAR(255) NOT NULL,
+            problem_number VARCHAR(50) NOT NULL,
+            memo TEXT NOT NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_memo (subject, chapter_name, problem_number)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
     // 既存テーブルのproblem_numberをVARCHARに変更
     try {
         $db->exec("ALTER TABLE records MODIFY COLUMN problem_number VARCHAR(50) NOT NULL");

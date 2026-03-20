@@ -21,6 +21,9 @@ if ($route === '') {
 } elseif ($route === 'start_custom_session' && $method === 'POST') {
     require __DIR__ . '/api/start_custom_session.php';
 
+} elseif ($route === 'memo' && $method === 'POST') {
+    require __DIR__ . '/api/memo.php';
+
 } elseif (preg_match('#^([A-Z]+)$#', $route, $m) && in_array($m[1], SUBJECTS)) {
     $subject = $m[1];
     require __DIR__ . '/pages/chapters.php';

@@ -17,6 +17,16 @@ $stats = get_stats($subject, $chapter_filter ?: null, $max_acc_val, $before_date
 $problems = load_problems_from_excel($subject);
 $chapters = array_keys($problems);
 
+// メモを取得
+$memo_map = [];
+if ($stats) {
+    $memo_stmt = $db->prepare("SELECT chapter_name, problem_number, memo FROM memos WHERE subject = ?");
+    $memo_stmt->execute([$subject]);
+    foreach ($memo_stmt->fetchAll() as $m) {
+        $memo_map[$m['chapter_name'] . '::' . $m['problem_number']] = $m['memo'];
+    }
+}
+
 // 正答率でソート
 usort($stats, function($a, $b) { return floatval($a['accuracy']) <=> floatval($b['accuracy']); });
 
@@ -82,7 +92,7 @@ include __DIR__ . '/../templates/header.php';
 <div class="table-responsive">
     <table class="table table-hover table-striped">
         <thead class="table-light">
-            <tr><th style="width:40px"></th><th>チャプター</th><th>問題番号</th><th>正答率</th><th>正解/回答数</th><th>最終学習日</th></tr>
+            <tr><th style="width:40px"></th><th>チャプター</th><th>問題番号</th><th>正答率</th><th>正解/回答数</th><th>最終学習日</th><th>メモ</th></tr>
         </thead>
         <tbody>
             <?php foreach ($stats as $s): ?>
@@ -99,11 +109,62 @@ include __DIR__ . '/../templates/header.php';
                 </td>
                 <td><?= $s['correct_count'] ?>/<?= $s['total_attempts'] ?></td>
                 <td class="text-muted"><?= $s['last_study_date'] ?></td>
+                <td>
+                    <?php $memo_key = $s['chapter_name'] . '::' . $s['problem_number']; $memo_text = $memo_map[$memo_key] ?? ''; ?>
+                    <button class="btn btn-sm btn-outline-secondary memo-edit-btn" title="メモを編集"
+                            data-chapter="<?= h($s['chapter_name']) ?>" data-problem="<?= h($s['problem_number']) ?>"
+                            data-memo="<?= h($memo_text) ?>">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <?php if ($memo_text): ?>
+                    <button class="btn btn-sm btn-link memo-view-btn p-0 ms-1" title="<?= h($memo_text) ?>"
+                            data-chapter="<?= h($s['chapter_name']) ?>" data-problem="<?= h($s['problem_number']) ?>"
+                            data-memo="<?= h($memo_text) ?>" data-bs-toggle="tooltip" data-bs-placement="left">
+                        <i class="bi bi-journal-text text-info"></i>
+                    </button>
+                    <?php endif; ?>
+                </td>
             </tr>
             <?php endforeach; ?>
         </tbody>
     </table>
 </div>
+<!-- メモ編集モーダル -->
+<div class="modal fade" id="memoEditModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> メモ編集</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-2" id="memo-problem-label"></p>
+                <textarea id="memo-textarea" class="form-control" rows="5" placeholder="メモを入力..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-danger" id="memo-delete-btn">削除</button>
+                <button type="button" class="btn btn-primary" id="memo-save-btn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- メモ表示モーダル -->
+<div class="modal fade" id="memoViewModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-journal-text"></i> メモ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-2" id="memo-view-label"></p>
+                <div id="memo-view-content" style="white-space: pre-wrap;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php else: ?>
 <div class="alert alert-info">
     <i class="bi bi-info-circle"></i>
@@ -114,6 +175,7 @@ include __DIR__ . '/../templates/header.php';
 <?php
 $subject_json = json_encode($subject);
 $custom_url = url('start_custom_session');
+$memo_url = url('memo');
 $page_scripts = <<<SCRIPT
 <script>
 const selectAll = document.getElementById('select-all');
@@ -141,6 +203,61 @@ if (startBtn) {
             const data = await res.json();
             if (data.redirect) window.location.href = data.redirect;
         } catch(e) { alert('通信エラー'); } finally { startBtn.disabled = false; startBtn.innerHTML = '<i class="bi bi-play-fill"></i> 選択した問題で学習 (<span id="selected-count">0</span>問)'; updateCount(); }
+    });
+}
+
+// ツールチップ初期化
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+    new bootstrap.Tooltip(el);
+});
+
+// メモ編集
+var memoEditModal = document.getElementById('memoEditModal');
+var memoChapter = '', memoProblem = '', memoEditBtn = null;
+if (memoEditModal) {
+    var bsEditModal = new bootstrap.Modal(memoEditModal);
+    document.querySelectorAll('.memo-edit-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            memoChapter = this.dataset.chapter;
+            memoProblem = this.dataset.problem;
+            memoEditBtn = this;
+            document.getElementById('memo-problem-label').textContent = memoChapter + ' / ' + memoProblem;
+            document.getElementById('memo-textarea').value = this.dataset.memo;
+            bsEditModal.show();
+        });
+    });
+    document.getElementById('memo-save-btn').addEventListener('click', async function() {
+        var memo = document.getElementById('memo-textarea').value.trim();
+        await saveMemo(memoChapter, memoProblem, memo);
+        bsEditModal.hide();
+    });
+    document.getElementById('memo-delete-btn').addEventListener('click', async function() {
+        await saveMemo(memoChapter, memoProblem, '');
+        bsEditModal.hide();
+    });
+}
+
+async function saveMemo(chapter, problem, memo) {
+    try {
+        var res = await fetch('{$memo_url}', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ subject: {$subject_json}, chapter_name: chapter, problem_number: problem, memo: memo })
+        });
+        if (res.ok) { location.reload(); }
+        else { alert('メモの保存に失敗しました'); }
+    } catch(e) { alert('通信エラー'); }
+}
+
+// メモ表示（クリックで大きく表示）
+var memoViewModal = document.getElementById('memoViewModal');
+if (memoViewModal) {
+    var bsViewModal = new bootstrap.Modal(memoViewModal);
+    document.querySelectorAll('.memo-view-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.getElementById('memo-view-label').textContent = this.dataset.chapter + ' / ' + this.dataset.problem;
+            document.getElementById('memo-view-content').textContent = this.dataset.memo;
+            bsViewModal.show();
+        });
     });
 }
 </script>
