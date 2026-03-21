@@ -103,6 +103,22 @@ function init_db(): void {
             UNIQUE KEY uq_mark (subject, chapter_name, problem_number)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS questions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            subject VARCHAR(10) NOT NULL,
+            chapter_name VARCHAR(255) NOT NULL,
+            problem_number VARCHAR(50) NOT NULL,
+            question_text TEXT NOT NULL,
+            choice_a TEXT NOT NULL,
+            choice_b TEXT NOT NULL,
+            choice_c TEXT NOT NULL,
+            choice_d TEXT NOT NULL,
+            correct_answer ENUM('A','B','C','D') NOT NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_question (subject, chapter_name, problem_number)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
     // 既存テーブルのproblem_numberをVARCHARに変更
     try {
         $db->exec("ALTER TABLE records MODIFY COLUMN problem_number VARCHAR(50) NOT NULL");

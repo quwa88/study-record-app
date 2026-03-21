@@ -41,6 +41,16 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="<?= url("$subject/quiz") ?>">
+                            <i class="bi bi-lightning"></i> クイズ
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= url("$subject/questions") ?>">
+                            <i class="bi bi-pencil-square"></i> 問題登録
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="<?= url("$subject/upload") ?>">
                             <i class="bi bi-upload"></i> Excel管理
                         </a>
