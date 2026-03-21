@@ -129,7 +129,7 @@ include __DIR__ . '/../templates/header.php';
                 <?php foreach ($new_labels as $i => $label): ?>
                 <button class="btn btn-outline-dark btn-lg text-start quiz-choice-btn" data-label="<?= $label ?>"
                         style="padding: 0.75rem 1.25rem;">
-                    <strong><?= $label ?>.</strong> <?= h($choice_values[$i]) ?>
+                    <strong><?= $label ?>.</strong> <?= $choice_values[$i] ?>
                 </button>
                 <?php endforeach; ?>
             </div>
