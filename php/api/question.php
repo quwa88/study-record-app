@@ -9,6 +9,7 @@ $choice_b = trim($data['choice_b'] ?? '');
 $choice_c = trim($data['choice_c'] ?? '');
 $choice_d = trim($data['choice_d'] ?? '');
 $correct_answer = strtoupper(trim($data['correct_answer'] ?? ''));
+$explanation = trim($data['explanation'] ?? '');
 
 if (!in_array($subject, SUBJECTS) || $chapter_name === '' || $problem_number === '') {
     json_response(['error' => '無効なパラメータです'], 400);
@@ -21,10 +22,10 @@ if (!in_array($correct_answer, ['A', 'B', 'C', 'D'])) {
 }
 
 $db = get_db();
-$db->prepare("INSERT INTO questions (subject, chapter_name, problem_number, question_text, choice_a, choice_b, choice_c, choice_d, correct_answer)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+$db->prepare("INSERT INTO questions (subject, chapter_name, problem_number, question_text, choice_a, choice_b, choice_c, choice_d, correct_answer, explanation)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
               ON DUPLICATE KEY UPDATE question_text = VALUES(question_text), choice_a = VALUES(choice_a), choice_b = VALUES(choice_b),
-              choice_c = VALUES(choice_c), choice_d = VALUES(choice_d), correct_answer = VALUES(correct_answer)")
-   ->execute([$subject, $chapter_name, $problem_number, $question_text, $choice_a, $choice_b, $choice_c, $choice_d, $correct_answer]);
+              choice_c = VALUES(choice_c), choice_d = VALUES(choice_d), correct_answer = VALUES(correct_answer), explanation = VALUES(explanation)")
+   ->execute([$subject, $chapter_name, $problem_number, $question_text, $choice_a, $choice_b, $choice_c, $choice_d, $correct_answer, $explanation]);
 
 json_response(['success' => true]);

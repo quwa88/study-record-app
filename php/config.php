@@ -115,10 +115,16 @@ function init_db(): void {
             choice_c TEXT NOT NULL,
             choice_d TEXT NOT NULL,
             correct_answer ENUM('A','B','C','D') NOT NULL,
+            explanation TEXT DEFAULT NULL,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY uq_question (subject, chapter_name, problem_number)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+    try {
+        $db->exec("ALTER TABLE questions ADD COLUMN explanation TEXT DEFAULT NULL AFTER correct_answer");
+    } catch (\Exception $e) {
+        // 既に存在する場合は無視
+    }
     // 既存テーブルのproblem_numberをVARCHARに変更
     try {
         $db->exec("ALTER TABLE records MODIFY COLUMN problem_number VARCHAR(50) NOT NULL");

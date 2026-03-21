@@ -92,7 +92,8 @@ include __DIR__ . '/../templates/header.php';
                             data-b="<?= h($registered ? $q_map[$key]['choice_b'] : '') ?>"
                             data-c="<?= h($registered ? $q_map[$key]['choice_c'] : '') ?>"
                             data-d="<?= h($registered ? $q_map[$key]['choice_d'] : '') ?>"
-                            data-correct="<?= $registered ? $q_map[$key]['correct_answer'] : '' ?>">
+                            data-correct="<?= $registered ? $q_map[$key]['correct_answer'] : '' ?>"
+                            data-explanation="<?= h($registered ? ($q_map[$key]['explanation'] ?? '') : '') ?>">
                         <i class="bi bi-<?= $registered ? 'pencil' : 'plus-circle' ?>"></i> <?= $registered ? '編集' : '登録' ?>
                     </button>
                 </td>
@@ -113,8 +114,8 @@ include __DIR__ . '/../templates/header.php';
             <div class="modal-body">
                 <p class="text-muted mb-3" id="q-label"></p>
                 <div class="mb-3">
-                    <label class="form-label fw-bold">問題文</label>
-                    <textarea id="q-text" class="form-control" rows="4" placeholder="問題文を入力..."></textarea>
+                    <label class="form-label fw-bold">問題文 <small class="text-muted fw-normal">(HTML対応)</small></label>
+                    <textarea id="q-text" class="form-control" rows="4" placeholder="問題文を入力... (HTMLタグも使用可)"></textarea>
                 </div>
                 <div class="row g-3">
                     <div class="col-md-6">
@@ -147,6 +148,10 @@ include __DIR__ . '/../templates/header.php';
                         <label class="btn btn-outline-success" for="correct-d">D</label>
                     </div>
                 </div>
+                <div class="mt-3">
+                    <label class="form-label fw-bold">解説 <small class="text-muted fw-normal">(HTML対応・任意)</small></label>
+                    <textarea id="q-explanation" class="form-control" rows="3" placeholder="解説を入力..."></textarea>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
@@ -175,6 +180,7 @@ document.querySelectorAll('.question-edit-btn').forEach(function(btn) {
         document.getElementById('q-b').value = this.dataset.b;
         document.getElementById('q-c').value = this.dataset.c;
         document.getElementById('q-d').value = this.dataset.d;
+        document.getElementById('q-explanation').value = this.dataset.explanation || '';
         var correct = this.dataset.correct;
         document.querySelectorAll('input[name="correct"]').forEach(function(r) {
             r.checked = r.value === correct;
@@ -195,7 +201,8 @@ document.getElementById('q-save-btn').addEventListener('click', async function()
         choice_b: document.getElementById('q-b').value,
         choice_c: document.getElementById('q-c').value,
         choice_d: document.getElementById('q-d').value,
-        correct_answer: correctEl.value
+        correct_answer: correctEl.value,
+        explanation: document.getElementById('q-explanation').value
     };
     try {
         var res = await fetch('{$question_url}', {

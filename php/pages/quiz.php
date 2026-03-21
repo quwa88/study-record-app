@@ -68,7 +68,6 @@ include __DIR__ . '/../templates/header.php';
 </div>
 
 <?php if ($current_problem === null): ?>
-    <!-- 全問回答済み -->
     <?php
     $correct_count = 0;
     foreach ($answered_map as $result) { if ($result === 'correct') $correct_count++; }
@@ -88,22 +87,34 @@ include __DIR__ . '/../templates/header.php';
     $key = $current_problem['chapter_name'] . '::' . $current_problem['problem_number'];
     $q = $q_map[$key] ?? null;
 
-    // 選択肢を用意（シャッフル対応）
-    $choices = [
+    // 選択肢の内容を配列に（元のラベル → テキスト）
+    $original_choices = [
         'A' => $q ? $q['choice_a'] : '',
         'B' => $q ? $q['choice_b'] : '',
         'C' => $q ? $q['choice_c'] : '',
         'D' => $q ? $q['choice_d'] : '',
     ];
-    $choice_keys = array_keys($choices);
+    $correct_original = $q ? $q['correct_answer'] : 'A';
+    $correct_text = $original_choices[$correct_original];
+    $explanation = $q ? ($q['explanation'] ?? '') : '';
+
+    // シャッフル: 内容をシャッフルして新しいA/B/C/Dに割り当て
+    $choice_values = array_values($original_choices);
+    $new_labels = ['A', 'B', 'C', 'D'];
     if ($shuffle) {
-        // シードをセッション+問題番号で固定してリロードしても同じ順序にする
         $seed = crc32($session_id . $key);
         mt_srand($seed);
-        shuffle($choice_keys);
+        shuffle($choice_values);
         mt_srand();
     }
-    $correct_original = $q ? $q['correct_answer'] : 'A';
+    // シャッフル後の正解ラベルを特定
+    $correct_new_label = 'A';
+    foreach ($choice_values as $i => $val) {
+        if ($val === $correct_text) {
+            $correct_new_label = $new_labels[$i];
+            break;
+        }
+    }
 ?>
     <div class="card mb-4">
         <div class="card-header">
@@ -113,12 +124,12 @@ include __DIR__ . '/../templates/header.php';
         </div>
         <div class="card-body">
             <?php if ($q): ?>
-            <div class="mb-4" style="font-size: 1.1rem; white-space: pre-wrap;"><?= h($q['question_text']) ?></div>
+            <div class="mb-4" style="font-size: 1.1rem;"><?= $q['question_text'] ?></div>
             <div class="d-grid gap-2" id="choices">
-                <?php foreach ($choice_keys as $ck): ?>
-                <button class="btn btn-outline-dark btn-lg text-start quiz-choice-btn" data-original="<?= $ck ?>"
+                <?php foreach ($new_labels as $i => $label): ?>
+                <button class="btn btn-outline-dark btn-lg text-start quiz-choice-btn" data-label="<?= $label ?>"
                         style="padding: 0.75rem 1.25rem;">
-                    <strong><?= $ck ?>.</strong> <?= h($choices[$ck]) ?>
+                    <strong><?= $label ?>.</strong> <?= h($choice_values[$i]) ?>
                 </button>
                 <?php endforeach; ?>
             </div>
@@ -132,11 +143,17 @@ include __DIR__ . '/../templates/header.php';
         </div>
     </div>
 
-    <!-- 結果表示エリア（非表示） -->
+    <!-- 結果表示エリア -->
     <div id="result-area" class="card mb-4" style="display:none;">
         <div class="card-body text-center">
             <div id="result-icon" class="fs-1 mb-2"></div>
             <div id="result-text" class="fs-4 mb-3"></div>
+            <?php if ($explanation): ?>
+            <div id="explanation-area" class="text-start mb-3 p-3 bg-light rounded" style="display:none;">
+                <strong><i class="bi bi-lightbulb"></i> 解説:</strong>
+                <div class="mt-2"><?= $explanation ?></div>
+            </div>
+            <?php endif; ?>
             <button id="next-btn" class="btn btn-primary btn-lg"><i class="bi bi-arrow-right"></i> 次の問題へ</button>
         </div>
     </div>
@@ -144,26 +161,25 @@ include __DIR__ . '/../templates/header.php';
 
 <?php
 $record_url = url('record');
-$correct_json = json_encode($correct_original);
+$correct_label_json = json_encode($correct_new_label);
 $chapter_json = json_encode($current_problem ? $current_problem['chapter_name'] : '');
 $problem_json = json_encode($current_problem ? $current_problem['problem_number'] : '');
 $page_scripts = <<<SCRIPT
 <script>
 var answered = false;
-var correctAnswer = {$correct_json};
+var correctLabel = {$correct_label_json};
 
 document.querySelectorAll('.quiz-choice-btn').forEach(function(btn) {
     btn.addEventListener('click', async function() {
         if (answered) return;
         answered = true;
-        var selected = this.dataset.original;
-        var isCorrect = selected === correctAnswer;
+        var selected = this.dataset.label;
+        var isCorrect = selected === correctLabel;
         var result = isCorrect ? 'correct' : 'incorrect';
 
-        // ボタンの色を変更
         document.querySelectorAll('.quiz-choice-btn').forEach(function(b) {
             b.disabled = true;
-            if (b.dataset.original === correctAnswer) {
+            if (b.dataset.label === correctLabel) {
                 b.classList.remove('btn-outline-dark');
                 b.classList.add('btn-success');
             } else if (b === btn && !isCorrect) {
@@ -172,13 +188,11 @@ document.querySelectorAll('.quiz-choice-btn').forEach(function(btn) {
             }
         });
 
-        // 記録を送信
         await fetch('{$record_url}', {
             method: 'POST', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ session_id: {$session_id}, chapter_name: {$chapter_json}, problem_number: {$problem_json}, result: result })
         });
 
-        // 結果表示
         var resultArea = document.getElementById('result-area');
         var resultIcon = document.getElementById('result-icon');
         var resultText = document.getElementById('result-text');
@@ -187,9 +201,11 @@ document.querySelectorAll('.quiz-choice-btn').forEach(function(btn) {
             resultText.innerHTML = '<span class="text-success">正解！</span>';
         } else {
             resultIcon.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle-fill"></i></span>';
-            resultText.innerHTML = '<span class="text-danger">不正解</span> <span class="text-muted">正解は ' + correctAnswer + '</span>';
+            resultText.innerHTML = '<span class="text-danger">不正解</span> <span class="text-muted">正解は ' + correctLabel + '</span>';
         }
         resultArea.style.display = 'block';
+        var explArea = document.getElementById('explanation-area');
+        if (explArea) explArea.style.display = 'block';
         resultArea.scrollIntoView({ behavior: 'smooth' });
     });
 });
