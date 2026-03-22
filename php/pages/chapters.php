@@ -1,7 +1,19 @@
 <?php
-$page_title = "$subject チャプター選択 - USCPA学習記録アプリ";
-$problems = load_problems_from_excel($subject);
-$chapters = array_keys($problems);
+$display_name = subject_display_name($subject);
+$page_title = "$display_name チャプター選択 - USCPA学習記録アプリ";
+$is_tbs_subject = is_tbs($subject);
+if ($is_tbs_subject) {
+    $tbs_problems = load_tbs_problems_from_excel($subject);
+    $chapters = array_keys($tbs_problems);
+    // MC互換の形式も作成（問題番号のフラットリスト）
+    $problems = [];
+    foreach ($tbs_problems as $ch => $items) {
+        $problems[$ch] = array_column($items, 'number');
+    }
+} else {
+    $problems = load_problems_from_excel($subject);
+    $chapters = array_keys($problems);
+}
 
 $db = get_db();
 $chapter_info = [];
@@ -26,7 +38,11 @@ foreach ($chapters as $ch) {
 
 // 要復習問題: 30日以上未学習 かつ 正答率75%以下
 $cutoff_date = date('Y-m-d', strtotime('-30 days'));
-$review_stats = get_stats($subject, null, 75.0, $cutoff_date);
+if ($is_tbs_subject) {
+    $review_stats = get_tbs_stats($subject, null, 75.0, $cutoff_date);
+} else {
+    $review_stats = get_stats($subject, null, 75.0, $cutoff_date);
+}
 
 // チャプターごとにグループ化
 $review_by_chapter = [];
@@ -77,7 +93,7 @@ include __DIR__ . '/../templates/header.php';
 </div>
 <?php endif; ?>
 
-<h2 class="mb-4"><i class="bi bi-book"></i> <?= h($subject) ?> - チャプターを選択</h2>
+<h2 class="mb-4"><i class="bi bi-book"></i> <?= h($display_name) ?> - チャプターを選択</h2>
 
 <?php if ($chapter_info): ?>
 <div class="row g-3">

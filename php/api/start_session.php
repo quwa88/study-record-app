@@ -1,6 +1,11 @@
 <?php
 $chapter_name = $_POST['chapter_name'] ?? '';
-$problems = load_problems_from_excel($subject);
+
+if (is_tbs($subject)) {
+    $problems = load_tbs_problems_from_excel($subject);
+} else {
+    $problems = load_problems_from_excel($subject);
+}
 
 if (!isset($problems[$chapter_name])) {
     flash('指定されたチャプターが見つかりません。', 'error');

@@ -1,5 +1,7 @@
 <?php
-$page_title = "$subject ダッシュボード - USCPA学習記録アプリ";
+$display_name = subject_display_name($subject);
+$is_tbs_subject = is_tbs($subject);
+$page_title = "$display_name ダッシュボード - USCPA学習記録アプリ";
 $chapter_filter = $_GET['chapter'] ?? '';
 $max_accuracy_input = $_GET['max_accuracy'] ?? '';
 $max_acc_val = ($max_accuracy_input !== '') ? floatval($max_accuracy_input) : null;
@@ -15,9 +17,15 @@ if ($before_date_input !== '') {
     $before_date = date('Y-m-d', strtotime("-{$days_ago_input} days"));
 }
 
-$stats = get_stats($subject, $chapter_filter ?: null, $max_acc_val, $before_date);
-$problems = load_problems_from_excel($subject);
-$chapters = array_keys($problems);
+if ($is_tbs_subject) {
+    $stats = get_tbs_stats($subject, $chapter_filter ?: null, $max_acc_val, $before_date);
+    $tbs_problems_data = load_tbs_problems_from_excel($subject);
+    $chapters = array_keys($tbs_problems_data);
+} else {
+    $stats = get_stats($subject, $chapter_filter ?: null, $max_acc_val, $before_date);
+    $problems = load_problems_from_excel($subject);
+    $chapters = array_keys($problems);
+}
 
 // メモ・マークを取得
 $db = get_db();
@@ -65,7 +73,7 @@ usort($stats, function($a, $b) { return floatval($a['accuracy']) <=> floatval($b
 include __DIR__ . '/../templates/header.php';
 ?>
 
-<h2 class="mb-4"><i class="bi bi-graph-up"></i> <?= h($subject) ?> ダッシュボード</h2>
+<h2 class="mb-4"><i class="bi bi-graph-up"></i> <?= h($display_name) ?> ダッシュボード</h2>
 
 <div class="card mb-4">
     <div class="card-body">
@@ -137,7 +145,7 @@ include __DIR__ . '/../templates/header.php';
 <div class="table-responsive">
     <table class="table table-hover table-striped">
         <thead class="table-light">
-            <tr><th style="width:40px"></th><th>チャプター</th><th>問題番号</th><th style="width:60px">M1</th><th style="width:60px">M2</th><th>正答率</th><th>正解/回答数</th><th>最終学習日</th><th>メモ</th></tr>
+            <tr><th style="width:40px"></th><th>チャプター</th><th>問題番号</th><th style="width:60px">M1</th><th style="width:60px">M2</th><th>正答率</th><th><?= $is_tbs_subject ? '正解小問/総小問' : '正解/回答数' ?></th><th>最終学習日</th><th>メモ</th></tr>
         </thead>
         <tbody>
             <?php foreach ($stats as $s):
@@ -171,7 +179,7 @@ include __DIR__ . '/../templates/header.php';
                         </div>
                     </div>
                 </td>
-                <td><?= $s['correct_count'] ?>/<?= $s['total_attempts'] ?></td>
+                <td><?php if ($is_tbs_subject): ?><?= $s['sum_correct'] ?>/<?= $s['sum_total'] ?><?php else: ?><?= $s['correct_count'] ?>/<?= $s['total_attempts'] ?><?php endif; ?></td>
                 <td class="text-muted"><?= $s['last_study_date'] ?></td>
                 <td style="white-space: nowrap;">
                     <button class="btn btn-sm btn-outline-secondary memo-edit-btn" title="メモを編集"

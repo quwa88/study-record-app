@@ -23,7 +23,9 @@ define('DB_USER', $_ENV['DB_USER'] ?? 'root');
 define('DB_PASS', $_ENV['DB_PASSWORD'] ?? '');
 
 // 科目一覧
-define('SUBJECTS', ['FAR', 'BAR', 'REG', 'AUD']);
+define('MC_SUBJECTS', ['FAR', 'BAR', 'REG', 'AUD']);
+define('TBS_SUBJECTS', ['TBS_FAR', 'TBS_BAR', 'TBS_REG', 'TBS_AUD']);
+define('SUBJECTS', array_merge(MC_SUBJECTS, TBS_SUBJECTS));
 
 // ベースパス（サブディレクトリに設置する場合）
 define('BASE_PATH', rtrim(dirname($_SERVER['SCRIPT_NAME']), '/'));
@@ -104,6 +106,19 @@ function init_db(): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
     $db->exec("
+        CREATE TABLE IF NOT EXISTS tbs_records (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            session_id INT NOT NULL,
+            chapter_name VARCHAR(255) NOT NULL,
+            problem_number VARCHAR(50) NOT NULL,
+            correct_count INT NOT NULL,
+            total_subquestions INT NOT NULL,
+            study_date DATE NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (session_id) REFERENCES sessions(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $db->exec("
         CREATE TABLE IF NOT EXISTS questions (
             id INT AUTO_INCREMENT PRIMARY KEY,
             subject VARCHAR(10) NOT NULL,
@@ -132,6 +147,27 @@ function init_db(): void {
     } catch (\Exception $e) {
         // 既に変更済みの場合は無視
     }
+}
+
+/**
+ * TBS科目かどうか判定
+ */
+function is_tbs(string $subject): bool {
+    return strpos($subject, 'TBS_') === 0;
+}
+
+/**
+ * TBS科目の表示名を返す（TBS_FAR → TBS-FAR）
+ */
+function tbs_display_name(string $subject): string {
+    return str_replace('TBS_', 'TBS-', $subject);
+}
+
+/**
+ * 科目の表示名を返す（TBSの場合はTBS-接頭辞、MCはそのまま）
+ */
+function subject_display_name(string $subject): string {
+    return is_tbs($subject) ? tbs_display_name($subject) : $subject;
 }
 
 /**

@@ -33,50 +33,58 @@ if ($route === '') {
 } elseif ($route === 'start_quiz' && $method === 'POST') {
     require __DIR__ . '/api/start_quiz.php';
 
-} elseif (preg_match('#^([A-Z]+)$#', $route, $m) && in_array($m[1], SUBJECTS)) {
+} elseif (preg_match('#^([A-Z_]+)$#', $route, $m) && in_array($m[1], SUBJECTS)) {
     $subject = $m[1];
     require __DIR__ . '/pages/chapters.php';
 
-} elseif (preg_match('#^([A-Z]+)/start_session$#', $route, $m) && in_array($m[1], SUBJECTS) && $method === 'POST') {
+} elseif (preg_match('#^([A-Z_]+)/start_session$#', $route, $m) && in_array($m[1], SUBJECTS) && $method === 'POST') {
     $subject = $m[1];
     require __DIR__ . '/api/start_session.php';
 
-} elseif (preg_match('#^([A-Z]+)/study/(\d+)$#', $route, $m) && in_array($m[1], SUBJECTS)) {
+} elseif (preg_match('#^([A-Z_]+)/study/(\d+)$#', $route, $m) && in_array($m[1], SUBJECTS)) {
     $subject = $m[1];
     $session_id = intval($m[2]);
-    require __DIR__ . '/pages/study.php';
+    if (is_tbs($subject)) {
+        require __DIR__ . '/pages/study_tbs.php';
+    } else {
+        require __DIR__ . '/pages/study.php';
+    }
 
-} elseif (preg_match('#^([A-Z]+)/study_custom/(\d+)$#', $route, $m) && in_array($m[1], SUBJECTS)) {
+} elseif (preg_match('#^([A-Z_]+)/study_custom/(\d+)$#', $route, $m) && in_array($m[1], SUBJECTS)) {
     $subject = $m[1];
     $session_id = intval($m[2]);
-    require __DIR__ . '/pages/study_custom.php';
+    if (is_tbs($subject)) {
+        require __DIR__ . '/pages/study_tbs.php';
+    } else {
+        require __DIR__ . '/pages/study_custom.php';
+    }
 
-} elseif (preg_match('#^([A-Z]+)/finish_session/(\d+)$#', $route, $m) && in_array($m[1], SUBJECTS) && $method === 'POST') {
+} elseif (preg_match('#^([A-Z_]+)/finish_session/(\d+)$#', $route, $m) && in_array($m[1], SUBJECTS) && $method === 'POST') {
     $subject = $m[1];
     $session_id = intval($m[2]);
     require __DIR__ . '/api/finish_session.php';
 
-} elseif (preg_match('#^([A-Z]+)/dashboard$#', $route, $m) && in_array($m[1], SUBJECTS)) {
+} elseif (preg_match('#^([A-Z_]+)/dashboard$#', $route, $m) && in_array($m[1], SUBJECTS)) {
     $subject = $m[1];
     require __DIR__ . '/pages/dashboard.php';
 
-} elseif (preg_match('#^([A-Z]+)/history$#', $route, $m) && in_array($m[1], SUBJECTS)) {
+} elseif (preg_match('#^([A-Z_]+)/history$#', $route, $m) && in_array($m[1], SUBJECTS)) {
     $subject = $m[1];
     require __DIR__ . '/pages/history.php';
 
-} elseif (preg_match('#^([A-Z]+)/upload$#', $route, $m) && in_array($m[1], SUBJECTS)) {
+} elseif (preg_match('#^([A-Z_]+)/upload$#', $route, $m) && in_array($m[1], SUBJECTS)) {
     $subject = $m[1];
     require __DIR__ . '/pages/upload.php';
 
-} elseif (preg_match('#^([A-Z]+)/questions$#', $route, $m) && in_array($m[1], SUBJECTS)) {
+} elseif (preg_match('#^([A-Z_]+)/questions$#', $route, $m) && in_array($m[1], SUBJECTS)) {
     $subject = $m[1];
     require __DIR__ . '/pages/questions.php';
 
-} elseif (preg_match('#^([A-Z]+)/quiz$#', $route, $m) && in_array($m[1], SUBJECTS)) {
+} elseif (preg_match('#^([A-Z_]+)/quiz$#', $route, $m) && in_array($m[1], SUBJECTS)) {
     $subject = $m[1];
     require __DIR__ . '/pages/quiz_setup.php';
 
-} elseif (preg_match('#^([A-Z]+)/quiz/(\d+)$#', $route, $m) && in_array($m[1], SUBJECTS)) {
+} elseif (preg_match('#^([A-Z_]+)/quiz/(\d+)$#', $route, $m) && in_array($m[1], SUBJECTS)) {
     $subject = $m[1];
     $session_id = intval($m[2]);
     require __DIR__ . '/pages/quiz.php';

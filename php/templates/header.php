@@ -27,7 +27,7 @@
                     <?php if (!empty($subject)): ?>
                     <li class="nav-item">
                         <a class="nav-link fw-bold" href="<?= url($subject) ?>">
-                            <i class="bi bi-book"></i> <?= h($subject) ?>
+                            <i class="bi bi-book"></i> <?= h(subject_display_name($subject)) ?>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -40,6 +40,7 @@
                             <i class="bi bi-clock-history"></i> 履歴
                         </a>
                     </li>
+                    <?php if (!is_tbs($subject)): ?>
                     <li class="nav-item">
                         <a class="nav-link" href="<?= url("$subject/quiz") ?>">
                             <i class="bi bi-lightning"></i> クイズ
@@ -50,6 +51,7 @@
                             <i class="bi bi-pencil-square"></i> 問題登録
                         </a>
                     </li>
+                    <?php endif; ?>
                     <li class="nav-item">
                         <a class="nav-link" href="<?= url("$subject/upload") ?>">
                             <i class="bi bi-upload"></i> Excel管理
